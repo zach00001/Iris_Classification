@@ -1,0 +1,60 @@
+import os
+import pandas as pd
+import numpy as np
+from sklearn import datasets as d
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+# change path to read iris data in downloads
+os.chdir('/Users/ecuadorianwifi/Downloads')
+df = pd.read_csv('Iris.csv')
+
+# rename columns for better accessibility, drop the id column because it's not needed
+df = df.rename(columns = {'SepalLengthCm': 'sepal_length', 'SepalWidthCm': 'sepal_width', 'PetalLengthCm': 'petal_length', 'PetalWidthCm': 'petal_width', 'Species': 'species'})
+df = df.drop(columns = ['Id'])
+
+# we removes 'Iris-' from each value in the species column
+counter = 0
+for i in df['species']:
+    df['species'].iloc[counter] = i.replace('Iris-', '')
+    counter += 1
+
+# splits into training and testing data
+X = df.iloc[:, [0,1,2, 3]].values
+y = df.iloc[:, 4].values
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = .25, random_state = 0)
+
+# fit and transform the training set train, and only transform the test set of the training data
+sc = StandardScaler()
+X_train = sc.fit_transform(X_train)
+X_test = sc.transform(X_test)
+
+# fit the logistic regression to necessary data
+classifier = LogisticRegression(random_state = 0, solver='lbfgs', multi_class='auto')
+classifier.fit(X_train, y_train)
+
+# creates prediction list for values in the X_test, creates rounded numpy array of corresponding values likely to be of each species
+prediction = classifier.predict(X_test)
+probability = classifier.predict_proba(X_test)
+probs_y = np.round(probability, 2)
+
+# set them equal to numpy array just to be safe (not sure why i did this in the first place since im sure they were numpy arrays initially too)
+prediction = np.array(prediction)
+y_test = np.array(y_test)
+probs_y = np.array(probs_y)
+
+# construct a dataframe of results for each tested value by creating an array of dataframe rows and then combining them using concat
+x = []
+y = 0
+for i in y_test:
+    df2 = pd.DataFrame({'Tested type': [y_test[y]], 'Predicted type': [prediction[y]], 'Setosa %': [probs_y[y, 0]], 'Versicolor %': [probs_y[y, 1]], 'Virginica %': [probs_y[y, 2]]})
+    y += 1
+    x.append(df2)
+df1 = pd.concat(x, ignore_index=True)
+
+# the accuracy of the model
+accuracy = classifier.score(X_test, y_test)
+
+# results of the classification of the dataset (final df containing all predictions and %s)
+results = df1
